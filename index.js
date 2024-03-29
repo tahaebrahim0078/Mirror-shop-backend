@@ -1,11 +1,14 @@
 const port = 4000;
-const express = require("express");
+import express from "express";
+
+import mongoose from "mongoose";
+import jwt from "jsonwebtoken";
+import multer from "multer";
+import path from "path";
+import cors from "cors";
+import serverless from "serverless-http";
+
 const app = express();
-const mongoose = require("mongoose");
-const jwt = require("jsonwebtoken");
-const multer = require("multer");
-const path = require("path");
-const cors = require("cors");
 
 app.use(express.json());
 app.use(cors());
