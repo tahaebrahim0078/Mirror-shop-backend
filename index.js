@@ -6,7 +6,7 @@ import jwt from "jsonwebtoken";
 import multer from "multer";
 import path from "path";
 import cors from "cors";
-import serverless from "serverless-http";
+
 
 const app = express();
 
@@ -41,7 +41,7 @@ app.use("/images", express.static("upload/images"));
 app.post("/upload", upload.single("product"), (req, res) => {
   res.json({
     success: 1,
-    image_url: `http://localhost:${port}/images/${req.file.filename}`,
+    image_url: `https://mirror-shop-backend-3.onrender.com/images/${req.file.filename}`,
   });
 });
 
@@ -127,81 +127,79 @@ app.get("/allproducts", async (req, res) => {
   res.send(products);
 });
 
-
-
 //creating endpoint for newCloection
-app.get('/newcollections',async(req,res)=>{
-        let products = await Product.find({});
-        let newcollection = products.slice(1).slice(-10);
-        
-        res.send(newcollection);
-})
+app.get("/newcollections", async (req, res) => {
+  let products = await Product.find({});
+  let newcollection = products.slice(1).slice(-10);
+
+  res.send(newcollection);
+});
 
 //creating popular in women section
-app.get('/popularinwomen' , async (req, res) => {
-    let products = await Product.find({category:"women"});
-    let popular_in_women = products.slice(0,4);
-    
-    res.send(popular_in_women);
-})
+app.get("/popularinwomen", async (req, res) => {
+  let products = await Product.find({ category: "women" });
+  let popular_in_women = products.slice(0, 4);
 
-//creating related products 
-app.get('/relatedProdcutss' , async (req, res) => {
-  let products = await Product.find({category:"men"});
-  let related_products = products.slice(0,4);
-  
+  res.send(popular_in_women);
+});
+
+//creating related products
+app.get("/relatedProdcutss", async (req, res) => {
+  let products = await Product.find({ category: "men" });
+  let related_products = products.slice(0, 4);
+
   res.send(related_products);
-})
+});
 
-
-//creating middleware to fetch user 
-const fetchUser = async (req, res , next) => {
-  const token = req.header('auth-token');
-  if(!token){
-    res.status(401).send({error: "Please authentication using valid token"})
+//creating middleware to fetch user
+const fetchUser = async (req, res, next) => {
+  const token = req.header("auth-token");
+  if (!token) {
+    res.status(401).send({ error: "Please authentication using valid token" });
+  } else {
+    try {
+      const data = jwt.verify(token, "secret_ecom");
+      req.user = data.user;
+      next();
+    } catch (error) {
+      res
+        .status(401)
+        .send({ error: "please authantication useing a valid token" });
+    }
   }
-  else{
-
-    try{
-         const data = jwt.verify(token,'secret_ecom');
-         req.user = data.user;
-         next();
-    }catch(error){
-       res.status(401).send({error:"please authantication useing a valid token"})
-  }
-}
 };
 
 //Creating endpoint for cart items data
-app.post('/addtocart', fetchUser, async (req,res) => {
-  console.log("Added",req.body.itemId);
-  let userData = await Users.findOne({_id:req.user.id})
-  userData.cartData[req.body.itemId] +=1;
-  await Users.findOneAndUpdate({_id:req.user.id},{cartData:userData.cartData});
-  res.send("added")
-
+app.post("/addtocart", fetchUser, async (req, res) => {
+  console.log("Added", req.body.itemId);
+  let userData = await Users.findOne({ _id: req.user.id });
+  userData.cartData[req.body.itemId] += 1;
+  await Users.findOneAndUpdate(
+    { _id: req.user.id },
+    { cartData: userData.cartData }
+  );
+  res.send("added");
 });
 
 //creating endpoint to get cart data by user
-app.post('/getcart', fetchUser, async (req,res) => {
+app.post("/getcart", fetchUser, async (req, res) => {
   console.log("Get Cart");
-  let userData = await Users.findOne({_id:req.user.id});
+  let userData = await Users.findOne({ _id: req.user.id });
   res.json(userData.cartData);
-
 });
 
-//creating api thats remove item form cart by user id 
-app.post('/removefromcart', fetchUser, async (req,res) => {
-  console.log("removed",req.body.itemId);
-  let userData = await Users.findOne({_id:req.user.id})
-  if(userData.cartData[req.body.itemId]>0)
-  userData.cartData[req.body.itemId] -=1;
-  await Users.findOneAndUpdate({_id:req.user.id},{cartData:userData.cartData});
-  res.send("Removed")
-   
-
-})
-
+//creating api thats remove item form cart by user id
+app.post("/removefromcart", fetchUser, async (req, res) => {
+  console.log("removed", req.body.itemId);
+  let userData = await Users.findOne({ _id: req.user.id });
+  if (userData.cartData[req.body.itemId] > 0)
+    userData.cartData[req.body.itemId] -= 1;
+  await Users.findOneAndUpdate(
+    { _id: req.user.id },
+    { cartData: userData.cartData }
+  );
+  res.send("Removed");
+});
 
 // schema creation for user modle
 
@@ -258,8 +256,8 @@ app.post("/signup", async (req, res) => {
 
 //creating end poit for user login
 
-app.post("/logain", async ( req, res) => {
-  let user = await Users.findOne({ email:req.body.email });
+app.post("/logain", async (req, res) => {
+  let user = await Users.findOne({ email: req.body.email });
   if (user) {
     const passCompare = req.body.password === user.password;
     if (passCompare) {
@@ -278,12 +276,12 @@ app.post("/logain", async ( req, res) => {
   }
 });
 
-
 //creatting port app
 app.listen(port, (err) => {
   if (!err) {
     console.log("Server running on port " + port);
   } else {
-    console.log("Error:" + error );
+    console.log("Error:" + error);
   }
 });
+
