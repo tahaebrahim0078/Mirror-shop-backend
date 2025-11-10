@@ -7,7 +7,7 @@ import multer from "multer";
 import path from "path";
 import cors from "cors";
 
-
+import bcrypt from "bcrypt";
 const app = express();
 
 app.use(express.json());
@@ -37,6 +37,7 @@ const storage = multer.diskStorage({
 const upload = multer({ storage: storage });
 
 //creating upload endpoint for images
+
 app.use("/images", express.static("upload/images"));
 app.post("/upload", upload.single("product"), (req, res) => {
   res.json({
@@ -46,6 +47,7 @@ app.post("/upload", upload.single("product"), (req, res) => {
 });
 
 //Schema for creating products
+
 const Product = mongoose.model("Product", {
   id: {
     type: Number,
@@ -128,6 +130,7 @@ app.get("/allproducts", async (req, res) => {
 });
 
 //creating endpoint for newCloection
+
 app.get("/newcollections", async (req, res) => {
   let products = await Product.find({});
   let newcollection = products.slice(1).slice(-10);
@@ -136,6 +139,7 @@ app.get("/newcollections", async (req, res) => {
 });
 
 //creating popular in women section
+
 app.get("/popularinwomen", async (req, res) => {
   let products = await Product.find({ category: "women" });
   let popular_in_women = products.slice(0, 4);
@@ -144,6 +148,7 @@ app.get("/popularinwomen", async (req, res) => {
 });
 
 //creating related products
+
 app.get("/relatedProdcutss", async (req, res) => {
   let products = await Product.find({ category: "men" });
   let related_products = products.slice(0, 4);
@@ -152,6 +157,7 @@ app.get("/relatedProdcutss", async (req, res) => {
 });
 
 //creating middleware to fetch user
+
 const fetchUser = async (req, res, next) => {
   const token = req.header("auth-token");
   if (!token) {
@@ -170,6 +176,7 @@ const fetchUser = async (req, res, next) => {
 };
 
 //Creating endpoint for cart items data
+
 app.post("/addtocart", fetchUser, async (req, res) => {
   console.log("Added", req.body.itemId);
   let userData = await Users.findOne({ _id: req.user.id });
@@ -182,6 +189,7 @@ app.post("/addtocart", fetchUser, async (req, res) => {
 });
 
 //creating endpoint to get cart data by user
+
 app.post("/getcart", fetchUser, async (req, res) => {
   console.log("Get Cart");
   let userData = await Users.findOne({ _id: req.user.id });
@@ -189,6 +197,7 @@ app.post("/getcart", fetchUser, async (req, res) => {
 });
 
 //creating api thats remove item form cart by user id
+
 app.post("/removefromcart", fetchUser, async (req, res) => {
   console.log("removed", req.body.itemId);
   let userData = await Users.findOne({ _id: req.user.id });
@@ -225,35 +234,50 @@ const Users = mongoose.model("Users", {
 
 //creating endpoint for registring user
 app.post("/signup", async (req, res) => {
-  let check = await Users.findOne({ email: req.body.email });
-  if (check) {
-    return res
-      .status(400)
-      .json({ success: false, errors: "existing user found with same email" });
+  try {
+    // check if user already exists
+    let check = await Users.findOne({ email: req.body.email });
+    if (check) {
+      return res.status(400).json({
+        success: false,
+        errors: "existing user found with same email",
+      });
+    }
+
+    // create empty cart
+    let cart = {};
+    for (let i = 0; i < 300; i++) {
+      cart[i] = 0;
+    }
+
+    // hash password before saving
+    const salt = await bcrypt.genSalt(10);
+    const hashedPassword = await bcrypt.hash(req.body.password, salt);
+
+    // create new user
+    const user = new Users({
+      name: req.body.username,
+      email: req.body.email,
+      password: hashedPassword,
+      cartData: cart,
+    });
+
+    await user.save();
+
+    // create JWT
+    const data = {
+      user: {
+        id: user.id,
+      },
+    };
+
+    const token = jwt.sign(data, "secret_ecom");
+    res.json({ success: true, token });
+  } catch (error) {
+    console.error(error);
+    res.status(500).json({ success: false, error: "Internal server error" });
   }
-  let cart = {};
-  for (let i = 0; i < 300; i++) {
-    cart[i] = 0;
-  }
-  const user = new Users({
-    name: req.body.username,
-    email: req.body.email,
-    password: req.body.password,
-    cartData: cart,
-  });
-
-  await user.save();
-
-  const data = {
-    user: {
-      id: user.id,
-    },
-  };
-
-  const token = jwt.sign(data, "secret_ecom");
-  res.json({ success: true, token });
 });
-
 //creating end poit for user login
 
 app.post("/logain", async (req, res) => {
@@ -284,4 +308,3 @@ app.listen(port, (err) => {
     console.log("Error:" + error);
   }
 });
-
